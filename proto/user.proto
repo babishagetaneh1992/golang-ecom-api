@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+
+package user;
+
+option go_package = "github.com/babishagetaneh1992/ecom-api/services/user-ms/adaptors/grpc/pb;pb";
+
+
+
+message User {
+    string id = 1;
+    string name = 2;
+    string email = 3;
+    string password = 4;
+    string created_at = 5;
+}
+
+message CreateUserRequest {
+    string name = 1;
+    string email = 2;
+    string password = 3;
+}
+
+message CreateUserResponse {
+    User user = 1;
+}
+
+message GetUserRequest {
+    string id = 1;
+}
+
+message GetUserResponse {
+    User user = 1;
+}
+
+message ListUserRequest {}
+
+message ListUserResponse {
+    repeated User users = 1;
+}
+
+message ExistRequest {
+    string id = 1;
+}
+
+message ExistResponse {
+    bool exists = 1;
+}
+
+
+service UserService {
+    rpc RegisterUser(CreateUserRequest) returns (CreateUserResponse);
+    rpc GetUser(GetUserRequest) returns (GetUserResponse);
+    rpc ListUsers(ListUserRequest) returns (ListUserResponse);
+    rpc Exists(ExistRequest) returns (ExistResponse);
+
+}
+
+
+// protoc --proto_path=proto --go_out=services/user-ms/adaptors/grpc/pb --go_opt=paths=source_relative --go-grpc_out=services/user-ms/adaptors/grpc/pb --go-grpc_opt=paths=source_relative proto/user.proto

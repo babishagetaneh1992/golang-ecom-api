@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package payment;
+
+option go_package = "github.com/babishagetaneh1992/ecom-api/services/payment-ms/adaptors/grpc/pb;pb";
+
+message Payment {
+  string id = 1;
+  string order_id = 2;
+  string user_id = 3;
+  double amount = 4;
+  string status = 5;
+  string method = 6;
+}
+
+message ProcessPaymentRequest {
+  string order_id = 1;
+  string user_id = 2;
+  double amount = 3;
+  string method = 4;
+}
+
+message ProcessPaymentResponse {
+  Payment payment = 1;
+}
+
+message GetPaymentRequest {
+  string id = 1;
+}
+
+message GetPaymentResponse {
+  Payment payment = 1;
+}
+
+message ListPaymentsRequest {}
+
+message ListPaymentsResponse {
+  repeated Payment payments = 1;
+}
+
+message UpdatePaymentStatusRequest {
+  string id = 1;
+  string status = 2;
+}
+
+message UpdatePaymentStatusResponse {
+  Payment payment = 1;
+}
+
+message DeletePaymentRequest {
+  string id = 1;
+}
+
+message DeletePaymentResponse {
+  string message = 1;
+}
+
+message NotifyOrderRequest {
+  string order_id = 1;
+}
+
+message NotifyOrderResponse {
+  string message = 1;
+}
+
+service PaymentService {
+  rpc ProcessPayment(ProcessPaymentRequest) returns (ProcessPaymentResponse);
+  rpc GetPayment(GetPaymentRequest) returns (GetPaymentResponse);
+  rpc ListPayments(ListPaymentsRequest) returns (ListPaymentsResponse);
+  rpc UpdatePaymentStatus(UpdatePaymentStatusRequest) returns (UpdatePaymentStatusResponse);
+  rpc DeletePayment(DeletePaymentRequest) returns (DeletePaymentResponse);
+  rpc NotifyOrderCreated(NotifyOrderRequest) returns (NotifyOrderResponse);
+}
+
+
+// protoc --proto_path=proto --go_out=services/payment-ms/adaptors/grpc/pb --go_opt=paths=source_relative --go-grpc_out=services/payment-ms/adaptors/grpc/pb --go-grpc_opt=paths=source_relative proto/payment.proto

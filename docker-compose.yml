@@ -1,0 +1,73 @@
+services:
+  user-ms:
+    build:
+      context: .
+      dockerfile: services/user-ms/Dockerfile
+    container_name: user-ms
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    env_file:
+      - .env
+
+  product-ms:
+    build:
+      context: .
+      dockerfile: services/product-ms/Dockerfile
+    container_name: product-ms
+    ports:
+      - "8081:8081"
+      - "50052:50052"
+    env_file:
+      - .env
+    depends_on:
+      user-ms:
+        condition: service_started
+
+  cart-ms:
+    build:
+      context: .
+      dockerfile: services/cart-ms/Dockerfile
+    container_name: cart-ms
+    ports:
+      - "8083:8083"
+      - "50053:50053"
+    env_file:
+      - .env
+    depends_on:
+      user-ms:
+        condition: service_started
+      product-ms:
+        condition: service_started
+
+  order-ms:
+    build:
+      context: .
+      dockerfile: services/order-ms/Dockerfile
+    container_name: order-ms
+    ports:
+      - "8084:8084"
+      - "50054:50054"
+    env_file:
+      - .env
+    depends_on:
+      user-ms:
+        condition: service_started
+      product-ms:
+        condition: service_started
+      cart-ms:
+        condition: service_started
+
+  payment-ms:
+    build:
+      context: .
+      dockerfile: services/payment-ms/Dockerfile
+    container_name: payment-ms
+    ports:
+      - "8085:8085"
+      - "50055:50055"
+    env_file:
+      - .env
+    depends_on:
+      order-ms:
+        condition: service_started

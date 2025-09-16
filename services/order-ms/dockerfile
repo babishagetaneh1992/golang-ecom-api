@@ -1,0 +1,21 @@
+FROM golang:1.25-alpine AS builder
+WORKDIR /app
+
+RUN apk add --no-cache git
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
+
+COPY go.work .
+COPY pkg ./pkg
+COPY services ./services
+
+RUN go work sync
+
+WORKDIR /app/services/order-ms
+RUN go build -o /app/order-ms ./cmd
+
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/order-ms .
+EXPOSE 8084 50054
+CMD ["./order-ms"]

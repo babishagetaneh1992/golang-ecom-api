@@ -1,0 +1,26 @@
+# ---------- Build Stage ----------
+FROM golang:1.25-alpine AS builder
+WORKDIR /app
+
+RUN apk add --no-cache git
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
+
+# Copy full workspace
+COPY go.work .
+COPY pkg ./pkg
+COPY services ./services
+
+# Sync workspace
+RUN go work sync
+
+# Build binary
+WORKDIR /app/services/user-ms
+RUN go build -o /app/user-ms ./cmd
+
+# ---------- Runtime Stage ----------
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/user-ms .
+EXPOSE 8081 50051
+CMD ["./user-ms"]

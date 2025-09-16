@@ -1,0 +1,43 @@
+basePath: /
+host: localhost:8084
+info:
+  contact: {}
+  description: This is the Order service for the e-commerce system.
+  title: Order Microservice API
+  version: "1.0"
+paths:
+  /orders:
+    post:
+      description: Place a new order for the authenticated user from their cart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create Order
+      tags:
+      - Orders
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

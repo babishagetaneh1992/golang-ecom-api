@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package product;
+
+option go_package = "github.com/babishagetaneh1992/ecom-api/services/product-ms/adaptors/grpc/pb;pb";
+
+
+// Product entity
+message Product {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  int32 stock = 5;
+}
+
+// Requests / Responses
+message CreateProductRequest {
+  Product product = 1;
+}
+message CreateProductResponse {
+  Product product = 1;
+}
+
+message GetProductRequest {
+  string id = 1;
+}
+message GetProductResponse {
+  Product product = 1;
+}
+
+message ListProductsRequest {}
+message ListProductsResponse {
+  repeated Product products = 1;
+}
+
+message UpdateProductRequest {
+  Product product = 1;
+}
+message UpdateProductResponse {
+  Product product = 1;
+}
+
+message DeleteProductRequest {
+  string id = 1;
+}
+message DeleteProductResponse {
+  bool success = 1;
+}
+
+// gRPC service definition
+service ProductService {
+  rpc CreateProduct(CreateProductRequest) returns (CreateProductResponse);
+  rpc GetProduct(GetProductRequest) returns (GetProductResponse);
+  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+  rpc UpdateProduct(UpdateProductRequest) returns (UpdateProductResponse);
+  rpc DeleteProduct(DeleteProductRequest) returns (DeleteProductResponse);
+}
+
+
+// protoc --proto_path=proto --go_out=services/product-ms/adaptors/grpc/pb --go_opt=paths=source_relative --go-grpc_out=services/product-ms/adaptors/grpc/pb --go-grpc_opt=paths=source_relative proto/product.proto

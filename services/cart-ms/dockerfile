@@ -1,0 +1,21 @@
+FROM golang:1.25-alpine AS builder
+WORKDIR /app
+
+RUN apk add --no-cache git
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
+
+COPY go.work .
+COPY pkg ./pkg
+COPY services ./services
+
+RUN go work sync
+
+WORKDIR /app/services/cart-ms
+RUN go build -o /app/cart-ms ./cmd
+
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/cart-ms .
+EXPOSE 8083 50053
+CMD ["./cart-ms"]
