@@ -3,6 +3,9 @@ package application
 import (
 	"context"
 	"fmt"
+
+	//"github.com/IBM/sarama"
+	"github.com/babishagetaneh1992/ecom-api/services/payment-ms/internals/adaptors/kafka"
 	"github.com/babishagetaneh1992/ecom-api/services/payment-ms/internals/domain"
 	"github.com/babishagetaneh1992/ecom-api/services/payment-ms/internals/ports"
 )
@@ -10,51 +13,36 @@ import (
 // PaymentServiceImplement implements ports.PaymentService
 type PaymentServiceImplement struct {
 	repo        ports.PaymentRepository
-	orderClient ports.OrderClient // optional: if you want to call order-ms back
+	//orderClient ports.OrderClient // optional: if you want to call order-ms back
+	kafkaProducer kafka.KafkaProducer
 }
 
 // constructor
-func NewPaymentService(repo ports.PaymentRepository, orderClient ports.OrderClient) ports.PaymentService {
+func NewPaymentService(repo ports.PaymentRepository, kafkaProducer kafka.KafkaProducer) ports.PaymentService {
 	return &PaymentServiceImplement{
 		repo:        repo,
-		orderClient: orderClient,
+		//orderClient: orderClient,
+		kafkaProducer: kafkaProducer,
 	}
 }
 
-// ProcessPayment simulates processing and persists result
 func (s *PaymentServiceImplement) ProcessPayment(ctx context.Context, payment *domain.Payment) (*domain.Payment, error) {
-	// 1. Fetch order details to get total amount
-	order, err := s.orderClient.GetOrder(ctx, payment.OrderID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch order %s: %w", payment.OrderID, err)
-	}
-
-	// ✅ Always trust Order-MS total (prevents tampering)
-	payment.Amount = order.Total
-	payment.UserID = order.UserId
-
-	// 2. Simulate payment gateway logic
-	success := true // here you could integrate with Stripe/PayPal etc.
-	if success {
-		payment.Status = "COMPLETED"
-	} else {
-		payment.Status = "FAILED"
-	}
-
-	// 3. Persist payment record
+	// 1. Persist payment record first to get the ID
 	created, err := s.repo.Create(ctx, payment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to persist payment: %w", err)
 	}
 
-	// 4. Notify Order-MS of new status
-	fmt.Println("🔎 Payment updating orderID=", payment.OrderID)
-	fmt.Printf("📡 Sending status update to Order-MS: order=%s, newStatus=%s\n", payment.OrderID, payment.Status)
+	// 2. Now produce the event using the created payment's information
+	event := &kafka.PaymentCreatedEvent{
+		PaymentID: created.ID,
+		OrderID:   created.OrderID,
+		Amount:    created.Amount,
+		Status:    created.Status,
+	}
 
-	if err := s.orderClient.UpdateOrderStatus(ctx, payment.OrderID, payment.Status); err != nil {
-		fmt.Println("⚠️ warning: failed to notify order-ms:", err)
-	} else {
-		fmt.Printf("✅ Successfully updated order %s status in Order-MS to %s\n", payment.OrderID, payment.Status)
+	if err := s.kafkaProducer.ProducePaymentCreatedEvent(event); err != nil {
+		return nil, fmt.Errorf("failed to produce payment created event: %w", err)
 	}
 
 	return created, nil
@@ -62,13 +50,13 @@ func (s *PaymentServiceImplement) ProcessPayment(ctx context.Context, payment *d
 
 
 // InitPayment creates a PENDING payment for an order
-func (s *PaymentServiceImplement) InitPayment(ctx context.Context, orderID string) (*domain.Payment, error) {
-	payment := &domain.Payment{
-		OrderID: orderID,
-		Status:  "PENDING",
-	}
-	return s.repo.Create(ctx, payment)
-}
+// func (s *PaymentServiceImplement) InitPayment(ctx context.Context, orderID string) (*domain.Payment, error) {
+// 	payment := &domain.Payment{
+// 		OrderID: orderID,
+// 		Status:  "COMPLETED",
+// 	}
+// 	return s.repo.Create(ctx, payment)
+// }
 
 // GetPayment fetches a payment by ID
 func (s *PaymentServiceImplement) GetPayment(ctx context.Context, id string) (*domain.Payment, error) {

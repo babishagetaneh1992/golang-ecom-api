@@ -9,7 +9,7 @@ import (
 
 type PaymentService interface {
     ProcessPayment(ctx context.Context, payment *domain.Payment) (*domain.Payment, error)
-    InitPayment(ctx context.Context, orderID string) (*domain.Payment, error)
+    //InitPayment(ctx context.Context, orderID string) (*domain.Payment, error)
     GetPayment(ctx context.Context, id string) (*domain.Payment, error)
     ListPayments(ctx context.Context) ([]*domain.Payment, error)
     UpdatePaymentStatus(ctx context.Context, id string, status string) (*domain.Payment, error)

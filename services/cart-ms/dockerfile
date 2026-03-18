@@ -7,9 +7,10 @@ ENV GOSUMDB=sum.golang.org
 
 COPY go.work .
 COPY pkg ./pkg
-COPY services ./services
 
-RUN go work sync
+COPY services/cart-ms ./services/cart-ms
+
+
 
 WORKDIR /app/services/cart-ms
 RUN go build -o /app/cart-ms ./cmd

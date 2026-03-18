@@ -6,7 +6,7 @@ require (
 	github.com/babishagetaneh1992/ecom-api/pkg v0.0.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-playground/validator v9.31.0+incompatible
-	//github.com/joho/godotenv v1.5.1
+	github.com/joho/godotenv v1.5.1
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.6
 	go.mongodb.org/mongo-driver v1.17.4

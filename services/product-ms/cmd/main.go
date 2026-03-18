@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"github.com/joho/godotenv"
 
 	//"product-microservice/adaptors/grpc/pb/product-microservice/services/product-ms/adaptors/grpc/pb"
 	//"product-microservice/internal/adaptors/db"
@@ -54,18 +55,22 @@ import (
 // @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
+
+	 if err := godotenv.Load("../../../.env"); err != nil {
+        log.Println("No .env file found, relying on system env variables")
+    }
 	
 	
   auth.InitJWT()
 
 	mongoURI := os.Getenv("MONGO_URI")
-	dbName := os.Getenv("MONGO_DB_NAME")
+	dbName := os.Getenv("MONGO_DB_PRODUCT")
 	httpPort := os.Getenv("PRODUCT_HTTP_PORT")
-	grpcPort := os.Getenv("PRODUCT_GRPC_ADDR")
-	userMsAddr := os.Getenv("USER_GRPC_ADDR")
+	grpcPort := os.Getenv("PRODUCT_GRPC_PORT")
+	userMsAddr := os.Getenv("USER_GRPC_PORT")
 
 	if mongoURI == "" || dbName == "" {
-		log.Fatal("Missing MONGO_URI or MONGO_DB_NAME in environment")
+		log.Fatal("Missing MONGO_URI or MONGO_DB_PRODUCT in environment")
 	}
 
 	// MongoDB connection

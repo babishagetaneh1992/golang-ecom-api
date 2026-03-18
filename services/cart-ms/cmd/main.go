@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"syscall"
+
 	//"ecom-api/pkg/auth"
 	"fmt"
 	"log"
@@ -25,7 +26,7 @@ import (
 	"github.com/babishagetaneh1992/ecom-api/pkg/auth"
 	//"github.com/babishagetaneh1992/ecom-api/services/cart-ms/adaptors/grpc/pb/github.com/babishagetaneh1992/ecom-api/services/cart-ms/services/cart-ms/adaptors/grpc/pb"
 	"github.com/babishagetaneh1992/ecom-api/services/cart-ms/internal/adaptors/db"
-	//"github.com/joho/godotenv"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/sync/errgroup"
@@ -54,21 +55,22 @@ import (
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token.
 
-
-
 func main() {
 
+	if err := godotenv.Load("../../../.env"); err != nil {
+		log.Println("No .env file found, relying on system env variables")
+	}
 
-auth.InitJWT()
+	auth.InitJWT()
 
 	mongoURI := os.Getenv("MONGO_URI")
-	dbName := os.Getenv("MONGO_DB_NAME")
+	dbName := os.Getenv("MONGO_DB_CART")
 	httpPort := os.Getenv("CART_HTTP_PORT")
-	grpcPort := os.Getenv("CART_GRPC_ADDR")
-	productMsAddr := os.Getenv("PRODUCT_GRPC_ADDR")
-    if productMsAddr == "" {
-    log.Fatal("❌ PRODUCT_GRPC_PORT is not set")
-}
+	grpcPort := os.Getenv("CART_GRPC_PORT")
+	productMsAddr := os.Getenv("PRODUCT_GRPC_PORT")
+	if productMsAddr == "" {
+		log.Fatal("❌ PRODUCT_GRPC_PORT is not set")
+	}
 	if mongoURI == "" || dbName == "" || httpPort == "" || grpcPort == "" || productMsAddr == "" {
 		log.Fatal("❌ Missing required environment variables")
 	}

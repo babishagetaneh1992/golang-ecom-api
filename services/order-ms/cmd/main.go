@@ -13,6 +13,8 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	"github.com/babishagetaneh1992/ecom-api/pkg/auth"
 	//"github.com/babishagetaneh1992/ecom-api/services/order-ms/adaptors/grpc/pb/github.com/babishagetaneh1992/ecom-api/services/order-ms/services/order-ms/adaptors/grpc/pb"
 
@@ -22,6 +24,7 @@ import (
 	"github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/adaptors/db"
 	grpcAdapter "github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/adaptors/grpc"
 	httpAdapter "github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/adaptors/http"
+	"github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/adaptors/kafka"
 	"github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/application"
 
 	//"github.com/joho/godotenv"
@@ -45,34 +48,31 @@ import (
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token.
 
-
 func main() {
 
-   auth.InitJWT()
+	if err := godotenv.Load("../../../.env"); err != nil {
+		log.Println("No .env file found, relying on system env variables")
+	}
+
+	auth.InitJWT()
 
 	mongoURI := os.Getenv("MONGO_URI")
-	dbName := os.Getenv("MONGO_DB_NAME")
+	dbName := os.Getenv("MONGO_DB_ORDER")
 	httpPort := os.Getenv("ORDER_HTTP_PORT")
-	grpcPort := os.Getenv("ORDER_GRPC_ADDR")
-	cartMsAddr := os.Getenv("CART_GRPC_ADDR")
-	paymentMsAddr := os.Getenv("PAYMENT_GRPC_ADDR")
+	grpcPort := os.Getenv("ORDER_GRPC_PORT")
+	cartMsAddr := os.Getenv("CART_GRPC_PORT")
+	paymentMsAddr := os.Getenv("PAYMENT_GRPC_PORT")
 
-	if mongoURI == "" || dbName == "" || httpPort == "" || grpcPort == "" {
-		log.Fatal("❌ Missing required env vars: MONGO_URI, MONGO_DB_NAME, ORDER_HTTP_PORT, ORDER_GRPC_PORT")
+	if mongoURI == "" || dbName == "" || httpPort == "" || grpcPort == "" || paymentMsAddr == "" || cartMsAddr == "" {
+		log.Fatal("❌ Missing required env vars: MONGO_URI, MONGO_DB_ORDER, ORDER_HTTP_PORT, ORDER_GRPC_PORT")
 	}
 
 	// --- MongoDB ---
-	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := client.Connect(ctx); err != nil {
-		log.Fatal(err)
-	}
-	defer client.Disconnect(ctx)
+	defer client.Disconnect(context.Background())
 
 	dbConn := client.Database(dbName)
 
@@ -85,17 +85,32 @@ func main() {
 	defer cartConn.Close()
 	cartClient := grpcAdapter.NewCartClient(cartConn)
 
-	// Payment-MS
-	paymentConn, err := grpc.Dial(paymentMsAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("failed to connect to payment-ms at %s: %v", paymentMsAddr, err)
+
+	// kafka producer for order
+	kafkaBrokers := os.Getenv("KAFKA_BROKERS")
+	if kafkaBrokers == "" {
+		kafkaBrokers = "localhost:9092" // Default if not provided
 	}
-	defer paymentConn.Close()
-	paymentClient := grpcAdapter.NewPaymentClient(paymentConn)
+	kafkaProducer, err := kafka.NewKafkaProducer([]string{kafkaBrokers}, "order.created")
+	if err != nil {
+		log.Fatalf("failed to initialize kafka producer: %v", err)
+	}
+	defer kafkaProducer.Close()
+
+
+	// kafka consumer for payment events
+	kafkaConsumer, err := kafka.NewKafkaConsumer([]string{kafkaBrokers}, "payments.created")
+	if err != nil {
+		log.Fatalf("failed to initialize kafka consumer: %v", err)
+	}
+	defer kafkaConsumer.Close()
 
 	// --- Service ---
 	repo := db.NewMongoOrderRepository(dbConn)
-	service := application.NewOrderService(repo, cartClient, paymentClient)
+	service := application.NewOrderService(repo, cartClient, kafkaProducer)
+
+	// Start Background Consumers
+	StartPaymentProcessedConsumer(context.Background(), kafkaConsumer, service)
 
 	// --- HTTP setup ---
 	handler := httpAdapter.NewOrderHandler(service)

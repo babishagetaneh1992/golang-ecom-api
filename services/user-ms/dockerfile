@@ -9,10 +9,10 @@ ENV GOSUMDB=sum.golang.org
 # Copy full workspace
 COPY go.work .
 COPY pkg ./pkg
-COPY services ./services
+COPY services/user-ms ./services/user-ms
 
 # Sync workspace
-RUN go work sync
+
 
 # Build binary
 WORKDIR /app/services/user-ms

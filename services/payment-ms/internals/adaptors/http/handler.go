@@ -31,15 +31,11 @@ import (
 
 type PaymentHandler struct {
 	service ports.PaymentService
-	orderClient ports.OrderClient
 }
 
-func NewPaymentHandler(s ports.PaymentService, oc ports.OrderClient) *PaymentHandler {
-	return &PaymentHandler{service: s, orderClient: oc}
+func NewPaymentHandler(s ports.PaymentService) *PaymentHandler {
+	return &PaymentHandler{service: s}
 }
-
-
-
 
 // @Summary      Create Payment
 // @Description  Create a payment for a given order (requires Bearer token).
@@ -66,18 +62,13 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Fetch order from Order-MS
-	order, err := h.orderClient.GetOrder(r.Context(), orderID)
-	if err != nil {
-		http.Error(w, `{"error": "failed to fetch order: `+err.Error()+`"}`, http.StatusBadRequest)
-		return
-	}
-
-	// 2. Build payment object from order data
+	// NOTE: Fetching order from Order-MS via gRPC is disabled. 
+	// Real-world logic would involve fetching this data from a request body 
+	// or another local cache. For now, we simulate a PENDING payment.
+	
 	payment := &domain.Payment{
-		OrderID: order.Id,
-		UserID:  order.UserId,
-		Amount:  order.Total,
+		OrderID: orderID,
+		UserID:  userID,
 		Status:  "PENDING",
 	}
 

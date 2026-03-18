@@ -7,9 +7,9 @@ ENV GOSUMDB=sum.golang.org
 
 COPY go.work .
 COPY pkg ./pkg
-COPY services ./services
+COPY services/payment-ms ./services/payment-ms
 
-RUN go work sync
+
 
 WORKDIR /app/services/payment-ms
 RUN go build -o /app/payment-ms ./cmd

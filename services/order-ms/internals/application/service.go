@@ -8,22 +8,26 @@ import (
 	//"order-microservice/internals/domain"
 	//"order-microservice/internals/ports"
 
+	
 	"github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/adaptors/grpc"
+	"github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/adaptors/kafka"
 	"github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/domain"
 	"github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/ports"
 )
 
 type OrderServiceImplement struct {
-	repo          ports.OrderRepository
-	cartClient    *grpc.CartClient
-	paymentClient *grpc.PaymentClient
+	repo       ports.OrderRepository
+	cartClient *grpc.CartClient
+	//paymentClient *grpc.PaymentClient
+	kafkaProducer *kafka.KafkaProducer
 }
 
-func NewOrderService(repo ports.OrderRepository, cartClient *grpc.CartClient, paymentClient *grpc.PaymentClient) ports.OrderService {
+func NewOrderService(repo ports.OrderRepository, cartClient *grpc.CartClient, kafkaProducer *kafka.KafkaProducer) ports.OrderService {
 	return &OrderServiceImplement{
-		repo:          repo,
-		cartClient:    cartClient,
-		paymentClient: paymentClient,
+		repo:       repo,
+		cartClient: cartClient,
+		//paymentClient: paymentClient,
+		kafkaProducer: kafkaProducer,
 	}
 }
 
@@ -54,10 +58,10 @@ func (s *OrderServiceImplement) CreateOrderFromCart(ctx context.Context, userID 
 	}
 
 	order := &domain.Order{
-		UserID:     userID,
-		Items:      items,
-		Total:    totalPrice,
-		Status:     "PENDING",
+		UserID: userID,
+		Items:  items,
+		Total:  totalPrice,
+		Status: "PENDING",
 	}
 
 	// 3. Save order in DB
@@ -73,13 +77,33 @@ func (s *OrderServiceImplement) CreateOrderFromCart(ctx context.Context, userID 
 	// 	fmt.Println("payment-ms response:", msg)
 	// }
 
-	paymentRes, err := s.paymentClient.NotifyOrderCreated(ctx, createdOrder.ID)
-	if err != nil {
-		fmt.Println("warning: failed to process payment:", err)
-	} else {
-		fmt.Println("payment-ms response:", paymentRes)
+	// paymentRes, err := s.paymentClient.NotifyOrderCreated(ctx, createdOrder.ID)
+	// if err != nil {
+	// 	fmt.Println("warning: failed to process payment:", err)
+	// } else {
+	// 	fmt.Println("payment-ms response:", paymentRes)
+	// }
+
+	// msg := &sarama.ProducerMessage{
+	// 	Topic: "orders",
+	// 	Value: sarama.StringEncoder(createdOrder.ID),
+	// }
+
+	// if err := s.kafkaProducer.ProduceMessage(msg); err != nil {
+	// 	fmt.Println("warning: failed to produce message:", err)
+	// }
+
+
+	event := &kafka.OrderCreatedEvent{
+		OrderID: createdOrder.ID,
+		UserID:  createdOrder.UserID,
+		Amount:  createdOrder.Total,
+		Status:  createdOrder.Status,
 	}
 
+	if err :=  s.kafkaProducer.ProduceOrderCreatedEvent(event); err != nil {
+		fmt.Println("warning: failed to produce message:", err)
+	}
 
 	// 5. Clear cart
 	if _, err := s.cartClient.ClearCart(ctx, userID); err != nil {
@@ -96,12 +120,12 @@ func (s *OrderServiceImplement) CreateOrder(ctx context.Context, order *domain.O
 		return nil, err
 	}
 
-	// Notify Payment-MS about this order
-	if msg, err := s.paymentClient.NotifyOrderCreated(ctx, createdOrder.ID); err != nil {
-		fmt.Println("warning: failed to notify payment-ms:", err)
-	} else {
-		fmt.Println("payment-ms response:", msg)
-	}
+	// // Notify Payment-MS about this order
+	// if msg, err := s.paymentClient.NotifyOrderCreated(ctx, createdOrder.ID); err != nil {
+	// 	fmt.Println("warning: failed to notify payment-ms:", err)
+	// } else {
+	// 	fmt.Println("payment-ms response:", msg)
+	// }
 
 	return createdOrder, nil
 }

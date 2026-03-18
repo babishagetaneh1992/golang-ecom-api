@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"syscall"
-
 	"fmt"
 	"log"
 	"net"
@@ -11,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"time"
+	"github.com/joho/godotenv"
 
 	//"user-microservice/adaptors/grpc/pb/user-microservice/services/user-ms/adaptors/grpc/pb"
 
@@ -56,18 +56,20 @@ import (
 
 func main() {
 	// Load environment variables
-
+     if err := godotenv.Load("../../../.env"); err != nil {
+        log.Println("No .env file found, relying on system env variables")
+    }
 
 	auth.InitJWT()
 
 	// Get values from env
 	mongoURI := os.Getenv("MONGO_URI")
-	dbName := os.Getenv("MONGO_DB_NAME")
+	dbName := os.Getenv("MONGO_DB_USER")
 	httpPort := os.Getenv("USER_HTTP_PORT")
 	grpcPort := os.Getenv("USER_GRPC_PORT")
 
 	if mongoURI == "" || dbName == "" {
-		log.Fatal("Missing MONGO_URI or MONGO_DB_NAME in environment")
+		log.Fatal("Missing MONGO_URI or MONGO_DB_USER in environment")
 	}
 
 	// MongoDB connection
@@ -110,9 +112,12 @@ func main() {
 
 	// HTTP server
 	g.Go(func() error {
-		fmt.Println("User-ms http server running on", httpPort)
-		return httpServer.ListenAndServe()
-	})
+    fmt.Println("User-ms http server running on", httpPort)
+    if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+        return err
+    }
+    return nil
+      })
 
 	// gRPC server
 	g.Go(func() error {
