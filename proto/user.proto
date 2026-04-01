@@ -48,12 +48,22 @@ message ExistResponse {
 }
 
 
+message VerifyTokenRequest {
+    string token = 1;
+}
+
+message VerifyTokenResponse {
+    string user_id = 1;
+    string role = 2;
+    bool valid = 3;
+}
+
 service UserService {
     rpc RegisterUser(CreateUserRequest) returns (CreateUserResponse);
     rpc GetUser(GetUserRequest) returns (GetUserResponse);
     rpc ListUsers(ListUserRequest) returns (ListUserResponse);
     rpc Exists(ExistRequest) returns (ExistResponse);
-
+    rpc VerifyToken(VerifyTokenRequest) returns (VerifyTokenResponse);
 }
 
 

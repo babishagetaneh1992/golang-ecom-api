@@ -107,7 +107,7 @@ func main() {
 	// initialize kafka consumer
 	kafkaConsumer, err := kafka.NewKafkaConsumer(brokers, "order.created")
 	if err != nil {
-		log.Fatal("❌ Failed to initialize kafka consumer: %v", err)
+		log.Fatalf("❌ Failed to initialize kafka consumer: %v", err)
 	}
 	defer kafkaConsumer.Close()
 
