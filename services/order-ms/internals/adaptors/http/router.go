@@ -4,6 +4,7 @@ import (
 	"net/http"
 	//"ecom-api/pkg/middleware"
 	"github.com/babishagetaneh1992/ecom-api/pkg/middleware"
+	userPb "github.com/babishagetaneh1992/ecom-api/services/user-ms/adaptors/grpc/pb"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -20,7 +21,7 @@ import (
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token.
 
-func NewRouter(handler *OrderHandler) http.Handler {
+func NewRouter(handler *OrderHandler, userClient userPb.UserServiceClient) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.Logger)
@@ -29,7 +30,7 @@ func NewRouter(handler *OrderHandler) http.Handler {
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	r.Route("/orders", func(r chi.Router) {
-		r.Use(middleware.AuthMiddleware)
+		r.Use(middleware.GRPCAuthMiddleware(userClient))
 
 		r.With(chiMiddleware.AllowContentType("application/json")).Post("/",handler.CreateOrder)
 		r.With(chiMiddleware.AllowContentType("application/json")).Put("/{id}",handler.UpdateOrderStatus)

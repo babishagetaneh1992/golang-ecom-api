@@ -26,6 +26,7 @@ import (
 	httpAdapter "github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/adaptors/http"
 	"github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/adaptors/kafka"
 	"github.com/babishagetaneh1992/ecom-api/services/order-ms/internals/application"
+	userPb "github.com/babishagetaneh1992/ecom-api/services/user-ms/adaptors/grpc/pb"
 
 	//"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -62,9 +63,10 @@ func main() {
 	grpcPort := os.Getenv("ORDER_GRPC_PORT")
 	cartMsAddr := os.Getenv("CART_GRPC_PORT")
 	paymentMsAddr := os.Getenv("PAYMENT_GRPC_PORT")
+	userMsAddr := os.Getenv("USER_GRPC_PORT")
 
-	if mongoURI == "" || dbName == "" || httpPort == "" || grpcPort == "" || paymentMsAddr == "" || cartMsAddr == "" {
-		log.Fatal("❌ Missing required env vars: MONGO_URI, MONGO_DB_ORDER, ORDER_HTTP_PORT, ORDER_GRPC_PORT")
+	if mongoURI == "" || dbName == "" || httpPort == "" || grpcPort == "" || paymentMsAddr == "" || cartMsAddr == "" || userMsAddr == "" {
+		log.Fatal("❌ Missing required env vars: MONGO_URI, MONGO_DB_ORDER, ORDER_HTTP_PORT, ORDER_GRPC_PORT, USER_GRPC_PORT")
 	}
 
 	// --- MongoDB ---
@@ -84,6 +86,14 @@ func main() {
 	}
 	defer cartConn.Close()
 	cartClient := grpcAdapter.NewCartClient(cartConn)
+
+	// User-MS (for auth)
+	userConn, err := grpc.Dial(userMsAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect to user-ms at %s: %v", userMsAddr, err)
+	}
+	defer userConn.Close()
+	userClient := userPb.NewUserServiceClient(userConn)
 
 
 	// kafka producer for order
@@ -116,7 +126,7 @@ func main() {
 	handler := httpAdapter.NewOrderHandler(service)
 	httpServer := &http.Server{
 		Addr:    httpPort,
-		Handler: httpAdapter.NewRouter(handler),
+		Handler: httpAdapter.NewRouter(handler, userClient),
 	}
 
 	// --- gRPC setup ---

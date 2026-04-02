@@ -10,6 +10,7 @@ import (
 	"github.com/babishagetaneh1992/ecom-api/services/user-ms/adaptors/grpc/pb"
 	"github.com/babishagetaneh1992/ecom-api/services/user-ms/internal/domain"
 	"github.com/babishagetaneh1992/ecom-api/services/user-ms/internal/ports"
+	"github.com/babishagetaneh1992/ecom-api/pkg/auth"
 )
 
 type UserGrpcServer struct {
@@ -89,7 +90,7 @@ func (s *UserGrpcServer) ListUsers(ctx context.Context, req *pb.ListUserRequest)
 
 
 
-func (s *UserGrpcServer) ExistUser(ctx context.Context, req *pb.ExistRequest)(*pb.ExistResponse, error) {
+func (s *UserGrpcServer) Exists(ctx context.Context, req *pb.ExistRequest)(*pb.ExistResponse, error) {
 	exists, err := s.service.Exists(req.Id)
 	if err != nil {
 		return  nil, err
@@ -97,5 +98,20 @@ func (s *UserGrpcServer) ExistUser(ctx context.Context, req *pb.ExistRequest)(*p
 
 	return  &pb.ExistResponse{
 		Exists: exists,
+	}, nil
+}
+
+func (s *UserGrpcServer) VerifyToken(ctx context.Context, req *pb.VerifyTokenRequest) (*pb.VerifyTokenResponse, error) {
+	claims, err := auth.VerifyToken(req.Token)
+	if err != nil {
+		return &pb.VerifyTokenResponse{
+			Valid: false,
+		}, nil
+	}
+
+	return &pb.VerifyTokenResponse{
+		UserId: claims.UserID,
+		Role:   claims.Role,
+		Valid:  true,
 	}, nil
 }
