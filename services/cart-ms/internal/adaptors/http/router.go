@@ -7,6 +7,7 @@ import (
 	_ "github.com/babishagetaneh1992/ecom-api/services/cart-ms/docs"
 
 	"github.com/babishagetaneh1992/ecom-api/pkg/middleware"
+	userPb "github.com/babishagetaneh1992/ecom-api/services/user-ms/adaptors/grpc/pb"
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -30,18 +31,19 @@ import (
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token.
 
-// NewRouter sets up routes for order-ms
-func NewRouter(handler *CartHandler) http.Handler {
+// NewRouter sets up routes for cart-ms
+func NewRouter(handler *CartHandler, userClient userPb.UserServiceClient) http.Handler {
 	r := chi.NewRouter()
 
 	// Swagger UI
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	r.Route("/carts", func(r chi.Router) {
-		r.With(middleware.AuthMiddleware).Get("/", handler.GetCart)
-		r.With(middleware.AuthMiddleware).Post("/add", handler.AddItem)
-		r.With(middleware.AuthMiddleware).Delete("/remove", handler.RemoveItem)
-		r.With(middleware.AuthMiddleware).Delete("/clear", handler.ClearCart)
+		r.Use(middleware.GRPCAuthMiddleware(userClient))
+		r.Get("/", handler.GetCart)
+		r.Post("/add", handler.AddItem)
+		r.Delete("/remove", handler.RemoveItem)
+		r.Delete("/clear", handler.ClearCart)
 	})
 
 	return r

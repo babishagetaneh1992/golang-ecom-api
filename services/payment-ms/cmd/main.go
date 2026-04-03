@@ -35,7 +35,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	//"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/insecure"
+	userPb "github.com/babishagetaneh1992/ecom-api/services/user-ms/adaptors/grpc/pb"
 )
 
 // @title           Payment Microservice API
@@ -62,9 +63,10 @@ func main() {
 	httpPort := os.Getenv("PAYMENT_HTTP_PORT")
 	grpcPort := os.Getenv("PAYMENT_GRPC_PORT")
 	orderMSAddr := os.Getenv("ORDER_GRPC_PORT")
+	userMsAddr := os.Getenv("USER_GRPC_PORT")
 
-	if mongoURI == "" || dbName == "" || grpcPort == "" || orderMSAddr == "" || httpPort == "" {
-		log.Fatal("❌ Missing required environment variables (MONGO_URI, MONGO_DB_PAYMENT, PAYMENT_GRPC_PORT, ORDER_GRPC_PORT, PAYMENT_HTTP_PORT)")
+	if mongoURI == "" || dbName == "" || grpcPort == "" || orderMSAddr == "" || httpPort == "" || userMsAddr == "" {
+		log.Fatal("❌ Missing required environment variables (MONGO_URI, MONGO_DB_PAYMENT, PAYMENT_GRPC_PORT, ORDER_GRPC_PORT, PAYMENT_HTTP_PORT, USER_GRPC_PORT)")
 	}
 
 	// --- MongoDB ---
@@ -120,6 +122,14 @@ func main() {
 	// --- Service ---
 	service := application.NewPaymentService(repo, *kafkaProducer)
 
+	// --- user-ms connect (for auth) ---
+	userConn, err := grpc.Dial(userMsAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect to user-ms at %s: %v", userMsAddr, err)
+	}
+	defer userConn.Close()
+	userClient := userPb.NewUserServiceClient(userConn)
+
 	// Start Kafka Consumers
 	StartOrderCreatedConsumer(ctx, kafkaConsumer, service)
 
@@ -127,7 +137,7 @@ func main() {
 	handler := httpAdapter.NewPaymentHandler(service)
 	httpServer := &http.Server{
 		Addr: httpPort,
-		Handler: httpAdapter.NewPaymentRouter(handler),
+		Handler: httpAdapter.NewPaymentRouter(handler, userClient),
 	}
 
 	// --- gRPC server ---

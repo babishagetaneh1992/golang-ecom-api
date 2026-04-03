@@ -33,6 +33,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	userPb "github.com/babishagetaneh1992/ecom-api/services/user-ms/adaptors/grpc/pb"
 )
 
 // @title           Product Microservice API
@@ -69,8 +71,8 @@ func main() {
 	grpcPort := os.Getenv("PRODUCT_GRPC_PORT")
 	userMsAddr := os.Getenv("USER_GRPC_PORT")
 
-	if mongoURI == "" || dbName == "" {
-		log.Fatal("Missing MONGO_URI or MONGO_DB_PRODUCT in environment")
+	if mongoURI == "" || dbName == "" || userMsAddr == "" {
+		log.Fatal("Missing MONGO_URI, MONGO_DB_PRODUCT, or USER_GRPC_PORT in environment")
 	}
 
 	// MongoDB connection
@@ -94,9 +96,18 @@ func main() {
 
 	// HTTP setup
 	handler := httpAdapter.NewProductHandler(service)
+
+	// connect to user-ms (for auth)
+	userConn, err := grpc.Dial(userMsAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect user-ms at %s: %v", userMsAddr, err)
+	}
+	defer userConn.Close()
+	userClient := userPb.NewUserServiceClient(userConn)
+
 	httpServer := http.Server{
 		Addr:    httpPort,
-		Handler: httpAdapter.NewRouter(handler),
+		Handler: httpAdapter.NewRouter(handler, userClient),
 	}
 
 	// gRPC setup
@@ -104,15 +115,7 @@ func main() {
 	productGrpc := grpcAdapter.NewProductGrpcServer(service)
 	pb.RegisterProductServiceServer(grpcServer, productGrpc)
 
-	// connect to user-ms
-	conn, err := grpc.Dial(userMsAddr, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("failed to connect user-ms at %s: %v", userMsAddr, err)
-	}
-	defer conn.Close()
-
-	// Example: you could initialize a user client here
-	// userClient := productgrpc.NewUserClient(conn)
+	// connect to user-ms (removed legacy connection)
 
 	lis, err := net.Listen("tcp", grpcPort)
 	if err != nil {

@@ -2,11 +2,11 @@ package http
 
 import (
 	"net/http"
-	appMiddleware "github.com/babishagetaneh1992/ecom-api/pkg/middleware"
-
 	"github.com/go-chi/chi"
 	chiMiddleware "github.com/go-chi/chi/middleware"
 
+	"github.com/babishagetaneh1992/ecom-api/pkg/middleware"
+	userPb "github.com/babishagetaneh1992/ecom-api/services/user-ms/adaptors/grpc/pb"
 	httpSwagger "github.com/swaggo/http-swagger"
 	_ "github.com/babishagetaneh1992/ecom-api/services/product-ms/docs" // Swagger docs
 )
@@ -29,7 +29,7 @@ import (
 // @in header
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token.
-func NewRouter(handler *ProductHandler) http.Handler {
+func NewRouter(handler *ProductHandler, userClient userPb.UserServiceClient) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.Logger)
@@ -46,7 +46,7 @@ func NewRouter(handler *ProductHandler) http.Handler {
 
 	// Product routes
 	r.Route("/products", func(r chi.Router) {
-		r.Use(appMiddleware.AuthMiddleware)
+		r.Use(middleware.GRPCAuthMiddleware(userClient))
 
 		r.Post("/", handler.CreateProduct)
 		r.Get("/", handler.ListProducts)

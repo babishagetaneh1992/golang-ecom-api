@@ -34,6 +34,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/babishagetaneh1992/ecom-api/services/cart-ms/adaptors/grpc/pb"
+	userPb "github.com/babishagetaneh1992/ecom-api/services/user-ms/adaptors/grpc/pb"
 )
 
 // @title           Cart Microservice API
@@ -68,8 +69,9 @@ func main() {
 	httpPort := os.Getenv("CART_HTTP_PORT")
 	grpcPort := os.Getenv("CART_GRPC_PORT")
 	productMsAddr := os.Getenv("PRODUCT_GRPC_PORT")
-	if productMsAddr == "" {
-		log.Fatal("❌ PRODUCT_GRPC_PORT is not set")
+	userMsAddr := os.Getenv("USER_GRPC_PORT")
+	if productMsAddr == "" || userMsAddr == "" {
+		log.Fatal("❌ PRODUCT_GRPC_PORT or USER_GRPC_PORT is not set")
 	}
 	if mongoURI == "" || dbName == "" || httpPort == "" || grpcPort == "" || productMsAddr == "" {
 		log.Fatal("❌ Missing required environment variables")
@@ -98,6 +100,14 @@ func main() {
 
 	productClient := grpcAdapter.NewProductClient(productConn)
 
+	// --- user-ms connect (for auth) ---
+	userConn, err := grpc.Dial(userMsAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect to user-ms at %s: %v", userMsAddr, err)
+	}
+	defer userConn.Close()
+	userClient := userPb.NewUserServiceClient(userConn)
+
 	// --- wiring ---
 	repo := db.NewMongoCartRepo(dbConn)
 	service := application.NewCartService(repo, productClient)
@@ -106,7 +116,7 @@ func main() {
 	handler := httpAdapter.NewCartHandler(service)
 	httpServer := &http.Server{
 		Addr:    httpPort,
-		Handler: httpAdapter.NewRouter(handler),
+		Handler: httpAdapter.NewRouter(handler, userClient),
 	}
 
 	// gRPC server
