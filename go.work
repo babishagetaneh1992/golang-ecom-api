@@ -7,4 +7,5 @@ use (
 	./services/payment-ms
 	./services/product-ms
 	./services/user-ms
+	./services/notification-ms
 )

@@ -2,7 +2,10 @@ module github.com/babishagetaneh1992/ecom-api/services/notification-ms
 
 go 1.25.1
 
-require github.com/IBM/sarama v1.47.0
+require (
+	github.com/IBM/sarama v1.47.0
+	github.com/joho/godotenv v1.5.1
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
